@@ -5,19 +5,18 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "node ./node_modules/vite/bin/vite.js build",
     "preview": "vite preview"
   },
   "dependencies": {
+    "@react-three/fiber": "^9.3.0",
     "@vitejs/plugin-react": "^5.0.0",
     "framer-motion": "^12.23.12",
     "lucide-react": "^0.468.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
-    "vite": "^7.1.7",
+    "react-router-dom": "^7.9.1",
     "three": "^0.180.0",
-    "@react-three/fiber": "^9.3.0",
-    "react-router-dom": "^7.9.1"
-  },
-  "devDependencies": {}
+    "vite": "^7.1.7"
+  }
 }
