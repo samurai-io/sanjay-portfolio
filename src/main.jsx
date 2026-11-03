@@ -147,6 +147,48 @@ function Scene3D({className="",variant=0}){
  },[]);
  return <div ref={ref} className={`scene3d ${className}`} aria-hidden="true"><Canvas dpr={[1,1.6]} camera={{position:[0,0,5.4],fov:42}} gl={{alpha:true,antialias:true}}><ambientLight intensity={.65}/><pointLight position={[3,3,4]} intensity={2} color="#9af2cc"/><pointLight position={[-3,-2,2]} intensity={1.2} color="#7d8dff"/><Orb variant={variant} pointer={pointer}/></Canvas></div>
 }
+function CursorTrail(){
+ const ref=useRef(null);
+ useEffect(()=>{
+  const finePointer=window.matchMedia("(pointer:fine)");
+  const reducedMotion=window.matchMedia("(prefers-reduced-motion: reduce)");
+  if(!finePointer.matches||reducedMotion.matches)return;
+  let previous=null,raf=0,pending=null;
+  const paint=()=>{
+   raf=0;
+   const el=ref.current,point=pending;
+   if(!el||!point)return;
+   el.style.setProperty("--cursor-x",`${point.x}px`);
+   el.style.setProperty("--cursor-y",`${point.y}px`);
+   if(previous){
+    const dx=point.x-previous.x,dy=point.y-previous.y,distance=Math.hypot(dx,dy);
+    el.style.setProperty("--trail-angle",`${Math.atan2(dy,dx)}rad`);
+    el.style.setProperty("--trail-length",`${Math.min(distance,110)}px`);
+    el.style.setProperty("--trail-opacity",`${Math.min(distance/28,.9)}`);
+   }
+   previous=point;
+   el.classList.add("is-visible");
+  };
+  const move=e=>{
+   if(e.pointerType==="touch")return;
+   pending={x:e.clientX,y:e.clientY};
+   if(!raf)raf=requestAnimationFrame(paint);
+  };
+  const leave=e=>{
+   if(e.relatedTarget)return;
+   previous=null;
+   ref.current?.classList.remove("is-visible");
+  };
+  window.addEventListener("pointermove",move,{passive:true});
+  window.addEventListener("pointerout",leave);
+  return()=>{
+   window.removeEventListener("pointermove",move);
+   window.removeEventListener("pointerout",leave);
+   cancelAnimationFrame(raf);
+  };
+ },[]);
+ return <div ref={ref} className="cursor-trail" aria-hidden="true"><i/><b/></div>
+}
 function Header(){const[menu,setMenu]=useState(false);const links=[["HOME","/"],["ABOUT","/about"],["WORK","/work"],["CONTACT","/contact"]];return <><header className="header"><Link className="logo" to="/">SANJAY <span>S</span></Link><nav>{links.map(([a,b])=><NavLink end={b==="/"} to={b} key={a}>{a}</NavLink>)}</nav><Link className="contact-btn" to="/contact">LET'S TALK ↗</Link><button className="menu" aria-label="Toggle navigation" onClick={()=>setMenu(!menu)}>{menu?<X/>:<Menu/>}</button></header>{menu&&<div className="mobile">{links.map(([a,b])=><NavLink end={b==="/"} to={b} onClick={()=>setMenu(false)} key={a}>{a} ↗</NavLink>)}</div>}</>}
 function Footer(){return <footer><Link className="logo" to="/">SANJAY <span>S</span></Link><span>© {new Date().getFullYear()} SANJAY S — MADE WITH INTENTION.</span><a href="#top">BACK TO TOP ↑</a></footer>}
 function PageFrame({children}){const location=useLocation();useEffect(()=>{window.scrollTo(0,0)},[location.pathname]);return <AnimatePresence mode="wait"><motion.div key={location.pathname} initial={{opacity:0,y:12}} animate={{opacity:1,y:0}} exit={{opacity:0,y:-8}} transition={{duration:.35}}>{children}</motion.div></AnimatePresence>}
@@ -176,5 +218,5 @@ function About(){return <main className="inner-page" id="top"><section className
 function ContactCTA(){return <section className="section contact" id="contact"><div className="meta"><span>CHAPTER 06 / WHAT’S NEXT</span><span>OPEN TO GOOD CONVERSATIONS</span></div><Reveal><p className="eyebrow">HAVE AN IDEA, A CHALLENGE OR A COLLABORATION?</p><h2>Let’s make<br/><em>something matter.</em></h2><p className="contact-copy">For security collaboration, creative projects or a thoughtful conversation — I’d be glad to hear from you.</p><a className="email" href="mailto:sankicju@gmail.com">SANKICJU@GMAIL.COM <ArrowUpRight size={18}/></a><div className="socials"><a href="https://github.com/samurai-io" target="_blank" rel="noreferrer"><Github size={15}/> GITHUB</a><a href="https://linkedin.com/in/sanjay-s" target="_blank" rel="noreferrer"><Linkedin size={15}/> LINKEDIN</a></div></Reveal><div className="contact-mark"><Fingerprint/> EVERY DETAIL LEAVES A TRACE.</div></section>}
 function Contact(){return <main className="inner-page contact-page" id="top"><section className="inner-hero"><Scene3D className="inner-orb" variant={1}/><p className="eyebrow">03 / START A CONVERSATION</p><h1>What shall we<br/><em>build next?</em></h1><p className="inner-lead">Have a security challenge, a creative brief or an idea worth exploring? Send a note and let’s see where it leads.</p><a className="enter" href="mailto:sankicju@gmail.com"><Mail size={15}/> EMAIL SANJAY <ArrowUpRight size={15}/></a></section><ContactCTA/></main>}
 function NotFound(){return <main className="inner-page inner-hero"><p className="eyebrow">404 / NOT FOUND</p><h1>Wrong<br/><em>coordinates.</em></h1><Link className="enter" to="/">RETURN HOME <ArrowUpRight size={15}/></Link></main>}
-function App(){return <BrowserRouter><Header/><PageFrame><Routes><Route path="/" element={<Home/>}/><Route path="/about" element={<About/>}/><Route path="/work" element={<Work/>}/><Route path="/work/:slug" element={<ProjectPage/>}/><Route path="/contact" element={<Contact/>}/><Route path="*" element={<NotFound/>}/></Routes><Footer/></PageFrame></BrowserRouter>}
+function App(){return <BrowserRouter><CursorTrail/><Header/><PageFrame><Routes><Route path="/" element={<Home/>}/><Route path="/about" element={<About/>}/><Route path="/work" element={<Work/>}/><Route path="/work/:slug" element={<ProjectPage/>}/><Route path="/contact" element={<Contact/>}/><Route path="*" element={<NotFound/>}/></Routes><Footer/></PageFrame></BrowserRouter>}
 createRoot(document.getElementById("root")).render(<App/>);
