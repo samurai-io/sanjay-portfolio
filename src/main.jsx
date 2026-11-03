@@ -6,40 +6,41 @@ import{Canvas,useFrame}from"@react-three/fiber";
 import * as THREE from "three";
 import{ArrowUpRight,ArrowDown,ArrowLeft,Shield,Terminal,Video,Github,Linkedin,Menu,X,Fingerprint,Code2,Mail,ExternalLink,Layers,Globe,Lock,Activity}from"lucide-react";
 import"./styles.css";
-const TOTAL=299,src=n=>`/frames/frame-${String(n).padStart(3,"0")}.jpg`;
+const TOTAL=598,PRELOAD=5,CACHE_LIMIT=8,MAX_CANVAS_WIDTH=3840,MAX_CANVAS_HEIGHT=2160,src=n=>`/frames/frame-${String(n).padStart(3,"0")}.jpg`;
 function Reveal({children,className="",delay=0}){const ref=useRef(null),show=useInView(ref,{once:true,margin:"-60px"});return <motion.div ref={ref} className={className} initial={{opacity:0,y:28,filter:"blur(6px)"}} animate={show?{opacity:1,y:0,filter:"blur(0px)"}:{}} transition={{duration:.75,delay,ease:[.22,1,.36,1]}}>{children}</motion.div>}
 function Sequence(){
- const section=useRef(null),canvas=useRef(null),cache=useRef(new Map()),frameRef=useRef(0),raf=useRef(0),loadedRef=useRef(0);
- const[frame,setFrame]=useState(0),[loaded,setLoaded]=useState(0);
+ const section=useRef(null),canvas=useRef(null),cache=useRef(new Map()),frameRef=useRef(1),raf=useRef(0),loadedRef=useRef(0);
+ const[frame,setFrame]=useState(1),[loaded,setLoaded]=useState(0);
  const draw=(n)=>{
   const c=canvas.current,img=cache.current.get(n);
   if(!c||!img||!img.complete||!img.naturalWidth)return;
-  const dpr=Math.min(window.devicePixelRatio||1,2),w=c.clientWidth,h=c.clientHeight;
+  const w=c.clientWidth,h=c.clientHeight;
   if(!w||!h)return;
-  const cw=Math.round(w*dpr),ch=Math.round(h*dpr);
+  const pixelScale=Math.min(MAX_CANVAS_WIDTH/w,MAX_CANVAS_HEIGHT/h);
+  const cw=Math.max(1,Math.round(w*pixelScale)),ch=Math.max(1,Math.round(h*pixelScale));
   if(c.width!==cw||c.height!==ch){c.width=cw;c.height=ch}
   const ctx=c.getContext("2d",{alpha:false});
   ctx.fillStyle="#080b0a";ctx.fillRect(0,0,cw,ch);
-  // Contain the original 16:9 frame: never crop, stretch, or upscale the source asset.
+  // Preserve each native 4K frame's aspect ratio when fitting it to the canvas.
   const scale=Math.min(cw/img.naturalWidth,ch/img.naturalHeight);
   const dw=img.naturalWidth*scale,dh=img.naturalHeight*scale;
   ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality="high";
   ctx.drawImage(img,(cw-dw)/2,(ch-dh)/2,dw,dh);
  };
  const ensure=(n)=>{
-  if(n<0||n>=TOTAL||cache.current.has(n))return;
+  if(n<1||n>TOTAL||cache.current.has(n))return;
   const img=new Image();img.decoding="async";cache.current.set(n,img);
   img.onload=()=>{loadedRef.current++;setLoaded(loadedRef.current);if(frameRef.current===n)draw(n);};
   img.onerror=()=>{cache.current.delete(n)};
-  img.src=src(n+1);
+  img.src=src(n);
  };
  const trim=(center)=>{
-  if(cache.current.size<=30)return;
+  if(cache.current.size<=CACHE_LIMIT)return;
   const keys=[...cache.current.keys()].sort((a,b)=>Math.abs(b-center)-Math.abs(a-center));
-  while(cache.current.size>30){const k=keys.shift();if(k===center)continue;const im=cache.current.get(k);cache.current.delete(k);if(im&&im.parentNode===null)im.src="";}
+  while(cache.current.size>CACHE_LIMIT){const k=keys.shift();if(k===center)continue;const im=cache.current.get(k);cache.current.delete(k);if(im&&im.parentNode===null)im.src="";}
  };
  useEffect(()=>{
-  ensure(0);for(let i=1;i<=18;i++)ensure(i);
+  for(let i=1;i<=PRELOAD;i++)ensure(i);
   return()=>{for(const im of cache.current.values())im.src="";cache.current.clear()};
  },[]);
  useEffect(()=>{
@@ -47,20 +48,20 @@ function Sequence(){
    const el=section.current;if(!el)return;
    const r=el.getBoundingClientRect(),span=el.offsetHeight-window.innerHeight;
    const p=Math.max(0,Math.min(1,-r.top/Math.max(1,span)));
-   const n=Math.round(p*(TOTAL-1));
+   const n=1+Math.round(p*(TOTAL-1));
    if(n!==frameRef.current){frameRef.current=n;setFrame(n)}
    ensure(n);
-   // Small forward/backward decode window keeps the 1080p sequence responsive without
-   // decoding all 299 full-resolution frames into memory at once.
-   for(let i=1;i<=14;i++)ensure(n+i);
-   for(let i=1;i<=4;i++)ensure(n-i);
+   // Keep the 4K decode window small to limit peak memory use.
+   for(let i=1;i<PRELOAD;i++)ensure(n+i);
+   for(let i=1;i<=2;i++)ensure(n-i);
    trim(n);draw(n);
   };
   const scroll=()=>{if(raf.current)return;raf.current=requestAnimationFrame(()=>{update();raf.current=0})};
   window.addEventListener("scroll",scroll,{passive:true});window.addEventListener("resize",update);update();
   return()=>{window.removeEventListener("scroll",scroll);window.removeEventListener("resize",update);cancelAnimationFrame(raf.current)};
  },[]);
- const phase=frame<40?0:frame<88?1:frame<160?2:frame<250?3:4;
+ const progress=(frame-1)/(TOTAL-1);
+ const phase=progress<40/299?0:progress<88/299?1:progress<160/299?2:progress<250/299?3:4;
  const copy=[
   ["CHAPTER 01 — THE OBSERVER","Every story starts with a point of view.","I learned to notice the details before making a move."],
   ["CHAPTER 02 — THE FIRST STEP","The next frame is a new direction.","Stand up. Step forward. Make the idea real."],
@@ -70,17 +71,17 @@ function Sequence(){
  ][phase];
  return <section className="sequence" id="story" ref={section}>
   <div className="sticky">
-   <canvas ref={canvas} className="film" aria-label="Scroll-controlled 299-frame Full HD sequence: seated introduction, standing, walking with a gimbal, editing-screen scene and cybersecurity transformation"/>
+   <canvas ref={canvas} className="film" aria-label="Scroll-controlled 598-frame 4K sequence: seated introduction, standing, walking with a gimbal, editing-screen scene and cybersecurity transformation"/>
    <div className="shade"/>
-   <div className="film-top mono"><span>● STORY SEQUENCE / 299 FULL HD FRAMES</span><span>SANJAY S — 2026</span></div>
+   <div className="film-top mono"><span>● STORY SEQUENCE / 598 NATIVE 4K FRAMES</span><span>SANJAY S — 2026</span></div>
    <div className="film-copy" key={phase}>
     <motion.p initial={{opacity:0,y:10}} animate={{opacity:1,y:0}} className="eyebrow">{copy[0]}</motion.p>
     <motion.h2 initial={{opacity:0,y:18}} animate={{opacity:1,y:0}} transition={{delay:.08}}>{copy[1]}</motion.h2>
     <motion.p className="film-sub" initial={{opacity:0}} animate={{opacity:1}} transition={{delay:.18}}>{copy[2]}</motion.p>
    </div>
-   <div className="film-bottom mono"><span>SCROLL TO CONTROL THE STORY <ArrowDown size={13}/></span><span>{String(frame+1).padStart(3,"0")} / 299</span></div>
-   <div className="bar"><i style={{width:`${frame/298*100}%`}}/></div>
-   {loaded<19&&<div className="loading mono">PREPARING FULL HD FRAMES {loaded} / 19</div>}
+   <div className="film-bottom mono"><span>SCROLL TO CONTROL THE STORY <ArrowDown size={13}/></span><span>{String(frame).padStart(3,"0")} / {TOTAL}</span></div>
+   <div className="bar"><i style={{width:`${progress*100}%`}}/></div>
+   {loaded<PRELOAD&&<div className="loading mono">PREPARING 4K FRAMES {loaded} / {PRELOAD}</div>}
   </div>
  </section>
 }
@@ -104,10 +105,18 @@ const projectDetails = {
  "visual-stories":{name:"Visual stories",tag:"DIGITAL CREATIVITY",type:"Creative work",year:"Ongoing",summary:"Short-form video and visual experiments focused on pacing, composition and turning raw footage into a clear story.",role:"Editing & visual storytelling",stack:["CapCut","Editing","Composition","Storytelling"],sections:[["The intent","Make every cut, transition and frame support the story rather than distract from it."],["The process","Explore footage, find a visual rhythm, shape the sequence and refine the final edit for its intended audience."],["The focus","Clarity, timing, atmosphere and a strong visual point of view."]]},
  "lab-notes":{name:"Lab notes",tag:"SECURITY RESEARCH",type:"Research & experimentation",year:"Ongoing",summary:"A collection of hands-on security explorations across web testing, network security, Linux and defensive validation in controlled environments.",role:"Independent learning & experimentation",stack:["Burp Suite","Nmap","Linux","Active Directory","Wireshark","TryHackMe"],sections:[["The mindset","Treat every claim as a hypothesis. Build a reproducible test, observe the result and preserve the evidence."],["The environment","Practice takes place in authorized labs, CTFs and explicitly scoped environments."],["The focus","Reconnaissance, attack-surface understanding, defensive visibility and clear technical notes."]]}
 };
-function Orb({variant=0}){
+function Orb({variant=0,pointer}){
  const group=useRef(), knot=useRef(), ring=useRef(), core=useRef();
+ const cursor=useRef(new THREE.Vector2());
  useFrame((state,delta)=>{
-  if(group.current){group.current.rotation.y+=delta*.12;group.current.rotation.x=Math.sin(state.clock.elapsedTime*.22)*.12}
+  cursor.current.x=THREE.MathUtils.damp(cursor.current.x,pointer.current.x,4,delta);
+  cursor.current.y=THREE.MathUtils.damp(cursor.current.y,pointer.current.y,4,delta);
+  if(group.current){
+   group.current.rotation.y=state.clock.elapsedTime*.12+cursor.current.x*.3;
+   group.current.rotation.x=Math.sin(state.clock.elapsedTime*.22)*.12+cursor.current.y*.2;
+   group.current.position.x=cursor.current.x*.12;
+   group.current.position.y=cursor.current.y*.08;
+  }
   if(knot.current){knot.current.rotation.x+=delta*.17;knot.current.rotation.z+=delta*.11}
   if(ring.current){ring.current.rotation.z-=delta*.08;ring.current.rotation.x=Math.sin(state.clock.elapsedTime*.3)*.12}
   if(core.current){core.current.rotation.y-=delta*.1}
@@ -121,7 +130,22 @@ function Orb({variant=0}){
  </group>
 }
 function Scene3D({className="",variant=0}){
- return <div className={`scene3d ${className}`} aria-hidden="true"><Canvas dpr={[1,1.6]} camera={{position:[0,0,5.4],fov:42}} gl={{alpha:true,antialias:true}}><ambientLight intensity={.65}/><pointLight position={[3,3,4]} intensity={2} color="#9af2cc"/><pointLight position={[-3,-2,2]} intensity={1.2} color="#7d8dff"/><Orb variant={variant}/></Canvas></div>
+ const ref=useRef(null),pointer=useRef({x:0,y:0});
+ useEffect(()=>{
+  const move=e=>{
+   const bounds=ref.current?.getBoundingClientRect();
+   if(!bounds?.width||!bounds.height)return;
+   if(e.clientX<bounds.left||e.clientX>bounds.right||e.clientY<bounds.top||e.clientY>bounds.bottom){reset();return}
+   pointer.current.x=THREE.MathUtils.clamp(((e.clientX-bounds.left)/bounds.width-.5)*2,-1,1);
+   pointer.current.y=THREE.MathUtils.clamp((.5-(e.clientY-bounds.top)/bounds.height)*2,-1,1);
+  };
+  const reset=()=>{pointer.current.x=0;pointer.current.y=0};
+  const leave=e=>{if(!e.relatedTarget)reset()};
+  window.addEventListener("pointermove",move,{passive:true});
+  window.addEventListener("pointerout",leave);
+  return()=>{window.removeEventListener("pointermove",move);window.removeEventListener("pointerout",leave)};
+ },[]);
+ return <div ref={ref} className={`scene3d ${className}`} aria-hidden="true"><Canvas dpr={[1,1.6]} camera={{position:[0,0,5.4],fov:42}} gl={{alpha:true,antialias:true}}><ambientLight intensity={.65}/><pointLight position={[3,3,4]} intensity={2} color="#9af2cc"/><pointLight position={[-3,-2,2]} intensity={1.2} color="#7d8dff"/><Orb variant={variant} pointer={pointer}/></Canvas></div>
 }
 function Header(){const[menu,setMenu]=useState(false);const links=[["HOME","/"],["ABOUT","/about"],["WORK","/work"],["CONTACT","/contact"]];return <><header className="header"><Link className="logo" to="/">SANJAY <span>S</span></Link><nav>{links.map(([a,b])=><NavLink end={b==="/"} to={b} key={a}>{a}</NavLink>)}</nav><Link className="contact-btn" to="/contact">LET'S TALK ↗</Link><button className="menu" aria-label="Toggle navigation" onClick={()=>setMenu(!menu)}>{menu?<X/>:<Menu/>}</button></header>{menu&&<div className="mobile">{links.map(([a,b])=><NavLink end={b==="/"} to={b} onClick={()=>setMenu(false)} key={a}>{a} ↗</NavLink>)}</div>}</>}
 function Footer(){return <footer><Link className="logo" to="/">SANJAY <span>S</span></Link><span>© {new Date().getFullYear()} SANJAY S — MADE WITH INTENTION.</span><a href="#top">BACK TO TOP ↑</a></footer>}
