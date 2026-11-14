@@ -1,0 +1,37 @@
+---
+const { study } = Astro.props;
+---
+<article class="study reveal" data-study={study.id}>
+  <div class="study-visual" data-tilt>
+    <img class="study-art" src={study.image} alt={study.alt} width="1440" height="960" loading="lazy" decoding="async" />
+    <span class="study-index">{study.number} / SELECTED STUDY</span>
+    <span class="study-artwork-badge" aria-hidden="true">Illustrative 3D artwork</span>
+    <span class="study-caption">{study.category}</span>
+  </div>
+  <div class="study-copy">
+    <div class="study-meta"><span>2026</span><span class="study-status">{study.status}</span></div>
+    <div class="study-description">
+      <h3>{study.title}</h3>
+      <p>{study.summary}</p>
+    </div>
+    {study.verification && <aside class="study-verification" aria-label="Reproducible project check">
+      <p class="study-verification-label">Reproducible check</p>
+      <code>{study.verification.command}</code>
+      <p class="study-verification-note">{study.verification.note}</p>
+      <div class="study-verification-links">
+        <a href={study.verification.readmeUrl} target="_blank" rel="noopener noreferrer">Read the instructions <span aria-hidden="true">↗</span></a>
+        <a href={study.verification.testsUrl} target="_blank" rel="noopener noreferrer">Browse test files <span aria-hidden="true">↗</span></a>
+      </div>
+    </aside>}
+    <details class="study-notes">
+      <summary><span>Open research notes</span><span class="notes-mark" aria-hidden="true">+</span></summary>
+      <div class="study-notes-content">
+        <p>{study.notes}</p>
+        <p class="study-sequence"><span>Working sequence</span>{study.sequence}</p>
+        <p class="study-caveat">{study.statusNote}</p>
+        <ul class="study-stack">{study.stack.map((tool) => <li>{tool}</li>)}</ul>
+      </div>
+    </details>
+    {study.repoUrl && <a class="study-repo" href={study.repoUrl} target="_blank" rel="noopener noreferrer">Open GitHub repository <span aria-hidden="true">↗</span></a>}
+  </div>
+</article>
