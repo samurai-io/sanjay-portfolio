@@ -1,7 +1,8 @@
 ---
 const { study } = Astro.props;
+const searchText = [study.title, study.category, study.status, study.summary, study.notes, ...study.stack].join(' ');
 ---
-<article class="study reveal" data-study={study.id}>
+<article class="study reveal" data-study={study.id} data-kind={study.repoUrl ? 'repository' : 'concept'} data-search={searchText}>
   <div class="study-visual" data-tilt>
     <img class="study-art" src={study.image} alt={study.alt} width="1440" height="960" loading="lazy" decoding="async" />
     <span class="study-index">{study.number} / SELECTED STUDY</span>

@@ -5,8 +5,7 @@ import '../styles/global.css';
 import { profile, capabilities, studies, experience, principles, toolkit } from '../data.js';
 import StudyCard from '../components/StudyCard.astro';
 
-const repositoryStudies = studies.filter((study) => study.repoUrl);
-const conceptStudies = studies.filter((study) => !study.repoUrl);
+const repositoryStudyCount = studies.filter((study) => study.repoUrl).length;
 
 const heroPortrait = {
   base: '/assets/hero-portrait.webp',
@@ -128,43 +127,23 @@ const heroPortrait = {
               <a class="text-link work-source-link" href="https://github.com/samurai-io?tab=repositories" target="_blank" rel="noopener noreferrer">Browse all repositories <span aria-hidden="true">↗</span></a>
             </div>
           </div>
-          <div class="study-groups">
-            <section class="study-group" aria-labelledby="repository-studies-title">
-              <div class="study-group-heading">
-                <h3 id="repository-studies-title"><span>01</span> / Public repositories</h3>
-                <p>{repositoryStudies.length} studies with source links</p>
+          <div class="study-explorer">
+            <div class="study-explorer-controls" data-study-controls hidden>
+              <label class="project-search">
+                <span>Find a project <kbd>/</kbd></span>
+                <input type="search" data-study-search aria-controls="project-list" placeholder="Search projects, tools, or topics" autocomplete="off" />
+              </label>
+              <div class="project-filters" role="group" aria-label="Filter projects">
+                <button class="project-filter" type="button" data-study-filter="all" aria-controls="project-list" aria-pressed="true">All work <span>{studies.length}</span></button>
+                <button class="project-filter" type="button" data-study-filter="repository" aria-controls="project-list" aria-pressed="false">Repositories <span>{repositoryStudyCount}</span></button>
+                <button class="project-filter" type="button" data-study-filter="concept" aria-controls="project-list" aria-pressed="false">Concepts &amp; practice <span>{studies.length - repositoryStudyCount}</span></button>
               </div>
-              <div class="study-carousel" role="region" aria-roledescription="carousel" aria-label="Public repository projects" data-study-carousel data-carousel-label="Repository study">
-                <div class="study-list">
-                  {repositoryStudies.map((study) => <StudyCard study={study} />)}
-                </div>
-                <div class="study-carousel-controls" role="group" aria-label="Public repository carousel controls">
-                  <button type="button" data-carousel-prev aria-label="Previous repository study">← Previous</button>
-                  <span class="study-carousel-counter" aria-hidden="true">01 / {String(repositoryStudies.length).padStart(2, '0')}</span>
-                  <button type="button" data-carousel-next aria-label="Next repository study">Next →</button>
-                  <button type="button" class="study-carousel-toggle" data-carousel-toggle>Pause rotation</button>
-                </div>
-                <p class="study-carousel-live" data-carousel-live aria-live="polite" aria-atomic="true"></p>
-              </div>
-            </section>
-            <section class="study-group" aria-labelledby="practice-studies-title">
-              <div class="study-group-heading">
-                <h3 id="practice-studies-title"><span>02</span> / Concepts &amp; practice</h3>
-                <p>Research directions, a hackathon concept, and ongoing lab work</p>
-              </div>
-              <div class="study-carousel" role="region" aria-roledescription="carousel" aria-label="Concepts and practice projects" data-study-carousel data-carousel-label="Concept and practice study">
-                <div class="study-list">
-                  {conceptStudies.map((study) => <StudyCard study={study} />)}
-                </div>
-                <div class="study-carousel-controls" role="group" aria-label="Concepts and practice carousel controls">
-                  <button type="button" data-carousel-prev aria-label="Previous concept or practice study">← Previous</button>
-                  <span class="study-carousel-counter" aria-hidden="true">01 / {String(conceptStudies.length).padStart(2, '0')}</span>
-                  <button type="button" data-carousel-next aria-label="Next concept or practice study">Next →</button>
-                  <button type="button" class="study-carousel-toggle" data-carousel-toggle>Pause rotation</button>
-                </div>
-                <p class="study-carousel-live" data-carousel-live aria-live="polite" aria-atomic="true"></p>
-              </div>
-            </section>
+            </div>
+            <p class="study-results" data-study-results role="status" aria-live="polite">Showing all {studies.length} projects.</p>
+            <div class="study-list" id="project-list">
+              {studies.map((study) => <StudyCard study={study} />)}
+            </div>
+            <p class="study-empty" data-study-empty hidden>No projects match. Try another search or filter.</p>
           </div>
         </div>
       </section>

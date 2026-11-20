@@ -65,147 +65,51 @@ if (cursorTracker && finePointer && !reduceMotion) {
   window.addEventListener('blur', () => root.classList.remove('cursor-visible', 'cursor-hover'));
 }
 
-document.querySelectorAll('[data-study-carousel]').forEach((carousel) => {
-  const slides = [...carousel.querySelectorAll('.study')];
-  if (slides.length < 2) return;
+const studyControls = document.querySelector('[data-study-controls]');
+if (studyControls) {
+  const searchInput = studyControls.querySelector('[data-study-search]');
+  const filterButtons = [...studyControls.querySelectorAll('[data-study-filter]')];
+  const studies = [...document.querySelectorAll('.study[data-kind]')];
+  const resultMessage = document.querySelector('[data-study-results]');
+  const emptyMessage = document.querySelector('[data-study-empty]');
+  let selectedKind = 'all';
 
-  const previousButton = carousel.querySelector('[data-carousel-prev]');
-  const nextButton = carousel.querySelector('[data-carousel-next]');
-  const toggleButton = carousel.querySelector('[data-carousel-toggle]');
-  const counter = carousel.querySelector('.study-carousel-counter');
-  const liveRegion = carousel.querySelector('[data-carousel-live]');
-  const animationTimers = new Map();
-  let currentIndex = 0;
-  let rotationPaused = reduceMotion;
-  let isHovered = false;
-  let hasFocus = false;
-  let isReadingNotes = false;
-  let isInView = true;
+  const updateStudies = () => {
+    const query = searchInput?.value.trim().toLocaleLowerCase() ?? '';
+    let visibleCount = 0;
 
-  carousel.dataset.enhanced = 'true';
-  slides.forEach((slide, index) => {
-    const title = slide.querySelector('.study-description h3')?.textContent.trim() ?? 'Study';
-    slide.setAttribute('role', 'group');
-    slide.setAttribute('aria-roledescription', 'slide');
-    slide.setAttribute('aria-label', `${index + 1} of ${slides.length}: ${title}`);
-    slide.classList.toggle('is-active', index === currentIndex);
-    slide.classList.toggle('is-visible', index === currentIndex);
-    slide.inert = index !== currentIndex;
-    slide.setAttribute('aria-hidden', String(index !== currentIndex));
-  });
-
-  const updateCounter = () => {
-    if (counter) counter.textContent = `${String(currentIndex + 1).padStart(2, '0')} / ${String(slides.length).padStart(2, '0')}`;
-  };
-  const updateRotationControl = () => {
-    if (!toggleButton) return;
-    toggleButton.textContent = rotationPaused ? 'Resume rotation' : 'Pause rotation';
-    toggleButton.setAttribute('aria-label', rotationPaused ? 'Resume automatic project rotation' : 'Pause automatic project rotation');
-  };
-
-  const moveTo = (nextIndex, direction, announce = false) => {
-    if (nextIndex === currentIndex) return;
-    const previousSlide = slides[currentIndex];
-    const nextSlide = slides[nextIndex];
-    const leavingClass = direction > 0 ? 'is-leaving-next' : 'is-leaving-previous';
-    const enteringClass = direction > 0 ? 'is-entering-next' : 'is-entering-previous';
-
-    [previousSlide, nextSlide].forEach((slide) => {
-      const timer = animationTimers.get(slide);
-      if (timer) window.clearTimeout(timer);
-      animationTimers.delete(slide);
-      slide.classList.remove('is-entering-next', 'is-entering-previous', 'is-leaving-next', 'is-leaving-previous');
+    studies.forEach((study) => {
+      const matchesKind = selectedKind === 'all' || study.dataset.kind === selectedKind;
+      const matchesQuery = !query || study.dataset.search?.toLocaleLowerCase().includes(query);
+      study.hidden = !(matchesKind && matchesQuery);
+      if (!study.hidden) visibleCount += 1;
     });
 
-    previousSlide.classList.remove('is-active');
-    previousSlide.classList.add(leavingClass);
-    previousSlide.inert = true;
-    previousSlide.setAttribute('aria-hidden', 'true');
-
-    nextSlide.classList.add('is-active', 'is-visible', enteringClass);
-    nextSlide.inert = false;
-    nextSlide.setAttribute('aria-hidden', 'false');
-    currentIndex = nextIndex;
-    isReadingNotes = [...nextSlide.querySelectorAll('details')].some((details) => details.open);
-    updateCounter();
-
-    if (announce && liveRegion) {
-      const title = nextSlide.querySelector('.study-description h3')?.textContent.trim() ?? 'Study';
-      liveRegion.textContent = `${carousel.dataset.carouselLabel ?? 'Study'} ${currentIndex + 1} of ${slides.length}: ${title}`;
-    }
-
-    [
-      [previousSlide, leavingClass],
-      [nextSlide, enteringClass]
-    ].forEach(([slide, className]) => {
-      const timer = window.setTimeout(() => {
-        slide.classList.remove(className);
-        animationTimers.delete(slide);
-      }, reduceMotion ? 30 : 850);
-      animationTimers.set(slide, timer);
-    });
+    if (resultMessage) resultMessage.textContent = `Showing ${visibleCount} of ${studies.length} projects.`;
+    if (emptyMessage) emptyMessage.hidden = visibleCount !== 0;
   };
 
-  const step = (amount, announce = true) => {
-    const nextIndex = (currentIndex + amount + slides.length) % slides.length;
-    moveTo(nextIndex, amount, announce);
-  };
+  filterButtons.forEach((button) => button.addEventListener('click', () => {
+    selectedKind = button.dataset.studyFilter ?? 'all';
+    filterButtons.forEach((filter) => filter.setAttribute('aria-pressed', String(filter === button)));
+    updateStudies();
+  }));
+  searchInput?.addEventListener('input', updateStudies);
 
-  previousButton?.addEventListener('click', () => step(-1));
-  nextButton?.addEventListener('click', () => step(1));
-  toggleButton?.addEventListener('click', () => {
-    rotationPaused = !rotationPaused;
-    updateRotationControl();
-  });
-  if (toggleButton && reduceMotion) toggleButton.hidden = true;
-  updateCounter();
-  updateRotationControl();
-
-  carousel.addEventListener('mouseenter', () => { isHovered = true; });
-  carousel.addEventListener('mouseleave', () => { isHovered = false; });
-  carousel.addEventListener('pointerdown', (event) => {
-    if (event.pointerType === 'touch') {
-      rotationPaused = true;
-      updateRotationControl();
-    }
-  });
-  carousel.addEventListener('focusin', () => { hasFocus = true; });
-  carousel.addEventListener('focusout', () => {
-    window.requestAnimationFrame(() => { hasFocus = carousel.contains(document.activeElement); });
-  });
-  slides.forEach((slide) => {
-    slide.querySelectorAll('details').forEach((details) => {
-      details.addEventListener('toggle', () => {
-        isReadingNotes = [...slides].some((activeSlide) => activeSlide.classList.contains('is-active') && [...activeSlide.querySelectorAll('details')].some((item) => item.open));
-      });
-    });
-  });
-  carousel.addEventListener('keydown', (event) => {
-    if (event.altKey || event.ctrlKey || event.metaKey || (event.target instanceof Element && event.target.closest('input, textarea, select'))) return;
-    if (event.key === 'ArrowRight') {
+  document.addEventListener('keydown', (event) => {
+    if (event.key === '/' && !event.altKey && !event.ctrlKey && !event.metaKey && !(event.target instanceof Element && event.target.closest('input, textarea, select, [contenteditable="true"]'))) {
       event.preventDefault();
-      step(1);
-    } else if (event.key === 'ArrowLeft') {
-      event.preventDefault();
-      step(-1);
-    } else if (event.key === 'Home') {
-      event.preventDefault();
-      moveTo(0, -1);
-    } else if (event.key === 'End') {
-      event.preventDefault();
-      moveTo(slides.length - 1, 1);
+      searchInput?.focus();
+    } else if (event.key === 'Escape' && document.activeElement === searchInput && searchInput?.value) {
+      searchInput.value = '';
+      updateStudies();
+      searchInput.focus();
     }
   });
 
-  if ('IntersectionObserver' in window) {
-    const carouselObserver = new IntersectionObserver(([entry]) => { isInView = entry.isIntersecting; }, { threshold: .15 });
-    carouselObserver.observe(carousel);
-  }
-
-  window.setInterval(() => {
-    if (!rotationPaused && !isHovered && !hasFocus && !isReadingNotes && isInView && !root.classList.contains('motion-paused') && document.visibilityState === 'visible') step(1, false);
-  }, 3000);
-});
+  studyControls.hidden = false;
+  updateStudies();
+}
 
 let scrollFrame = 0;
 const updateScroll = () => {
