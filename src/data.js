@@ -9,7 +9,7 @@ export const profile = {
   institution: 'University College of Engineering, Thodupuzha · APJ Abdul Kalam Technological University',
   links: [
     { label: 'GitHub', url: 'https://github.com/samurai-io' },
-    { label: 'LinkedIn', url: 'https://www.linkedin.com/in/sanjay-s/' },
+    { label: 'LinkedIn', url: 'https://www.linkedin.com/in/rootsanjai' },
     { label: 'HackerOne', url: 'https://hackerone.com/sanjay-s' },
     { label: 'Hack The Box', url: 'https://app.hackthebox.com/profile/WHITEDECVIL' }
   ]
